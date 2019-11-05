@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for
 import os
 
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import text
 
 app = Flask(__name__)
 # app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://libapp:libapp123@localhost/libappdev'
@@ -14,6 +15,10 @@ db = SQLAlchemy(app)
 
 
 class Book(db.Model):
+    def __init__(self, data):
+        self.title = data[0]
+        self.author = data[1]
+
     title = db.Column(db.String(80),
                       unique=True,
                       nullable=False,
@@ -29,13 +34,20 @@ class Book(db.Model):
 
 @app.route("/", methods=["GET", "POST"])
 def home():
-    if request.form:
-        book = Book(title=request.form.get("title"),
-                    author=request.form.get("author"))
-        db.session.add(book)
-        db.session.commit()
-    books = Book.query.all()
+    # books = Book.query.all()
+    query = text("select * from book")
+    books = [Book(data) for data in db.engine.execute(query)]
     return render_template("home.html", books=books)
+
+
+@app.route("/add", methods=["POST"])
+def add_book():
+    title = request.form.get("title")
+    author = request.form.get("author")
+    book = Book((title, author))
+    db.session.add(book)
+    db.session.commit()
+    return redirect("/")
 
 
 @app.route("/edit", methods=["POST"])
